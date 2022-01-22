@@ -34,7 +34,7 @@ function guideBird(){
   const birdImage = document.getElementById('birdImage');
   let thisBird = birdNames[count].charAt(0).toUpperCase() + birdNames[count].slice(1)
   pointToBird.textContent = thisBird;
-  birdImage.src = "/assets/" + thisBird + ".png";
+  birdImage.src = "./assets/" + thisBird + ".png";
 }
 
 function updateList(){
