@@ -29,6 +29,8 @@ for (let i = 0; i < 64; i++) {
     }
 }
 
+
+
 ////////////////////////////////////////////////////
 // Main
 ////////////////////////////////////////////////////
@@ -65,20 +67,20 @@ jQuery(function ($) {
         emojiArray.forEach((bit, index) => {
             let bitId = "";
             if (Math.floor(index / 10) > 0) {
-                bitId = index.toString(); 
+                bitId = index.toString();
             } else bitId = "0" + index.toString();
             dbRef.doc(emojiName).collection('canvas').doc(bitId).set({
                 posX: bit.posX,
                 posY: bit.posY,
                 isOn: bit.isOn,
                 color: bit.color
-            }).then(() => console.log("Finish the ", index , "ones."))
-              .catch((error) => {"Error: ", error})
+            }).then(() => console.log("Finish the ", index, "ones."))
+                .catch((error) => { "Error: ", error })
         });
     }
 
 
-    
+
     ////////////////////////////////////////////////////
     // Constructing the base board
     ////////////////////////////////////////////////////
@@ -109,59 +111,58 @@ jQuery(function ($) {
 
     // Get the database
     function getDatabase() {
-        let idCount = 0;
+        let rowId = 0;
         dbRef.get().then((querySnapshot) => {
             querySnapshot.forEach((doc) => {
 
-                // Get the circles and put it into array
-                let dbCircle = JSON.parse(JSON.stringify(circleTemplate))
-                dbRef.doc(doc.data().name).collection("canvas").get().then((querySnapshot) => {
-                    querySnapshot.forEach((bit) => {
-                        let i = 8 * bit.data().posY + bit.data().posX;
-                        dbCircle[i].posX = bit.data().posX,
-                        dbCircle[i].posY = bit.data().posY,
-                        dbCircle[i].isOn = bit.data().isOn,
-                        dbCircle[i].color = bit.data().color  
-                    });
-                }); 
+                // Get the circles from the database in each row
+                let dbCircle = R.clone(circleTemplate);
+                doc.ref.collection("canvas").get()
+                    .then((querySnapshot) => {
+                        // HTML for each row
+                        let $idEmo = $("<th>", { "scope": "row" });
+                        let $canvasEmo = $("<th>");
+                        let $nameEmo = $("<th>");
+                        let $dateEmo = $("<th>");
+                        let $canvasEmoContent = $("<canvas>")
+                        $canvasEmoContent.attr({
+                            width: "100",
+                            height: "100",
+                            id: "db-canvas-" + rowId
+                        });
 
-                // HTML for each row
-                let $idEmo = $("<th>", {"scope": "row"});
-                let $canvasEmo = $("<th>");
-                let $nameEmo = $("<th>");
-                let $dateEmo = $("<th>");
-                let $canvasEmoContent = $("<canvas>")
-                $canvasEmoContent.attr({
-                    width: "100",
-                    height: "100",
-                    id: "db-canvas-" + idCount
-                });
-                
-                // Prepend data into one row
-                $idEmo.prepend(idCount);
-                $canvasEmo.prepend($canvasEmoContent);
-                $nameEmo.prepend(doc.data().name);
-                $dateEmo.prepend(doc.data().date);               
-              
-                let $tableRow = $("<tr>");
-                $tableRow.addClass("t-row");
-                $tableRow.prepend($idEmo, $canvasEmo, $nameEmo, $dateEmo);
-                $("#emoji-table-body").append($tableRow);
+                        // Prepend data into one row
+                        $idEmo.prepend(rowId);
+                        $canvasEmo.prepend($canvasEmoContent);
+                        $nameEmo.prepend(doc.data().name);
+                        $dateEmo.prepend(doc.data().date);
 
-                // Calling a function to make canvas (including board + led)
-                makeDatabaseCanvas("db-canvas-" + idCount, dbCircle);
-                idCount++;
+                        let $tableRow = $("<tr>");
+                        $tableRow.addClass("t-row");
+                        $tableRow.prepend($idEmo, $canvasEmo, $nameEmo, $dateEmo);
+                        $("#emoji-table-body").append($tableRow);
+                        querySnapshot.forEach((bit) => {
+                            let i = 8 * bit.data().posY + bit.data().posX;
+                            dbCircle[i].posX = bit.data().posX;
+                            dbCircle[i].posY = bit.data().posY;
+                            dbCircle[i].isOn = bit.data().isOn;
+                            dbCircle[i].color = bit.data().color;
+                        });
+                    })
+                    .then(() => {
+                        makeDatabaseCanvas("db-canvas-" + rowId, dbCircle)
+                        rowId++;
+                    })
+
             });
         });
     }
 
     // Apply circle array into canvas
-    function makeDatabaseCanvas(id, dbCircle){
+    function makeDatabaseCanvas(id, dCircle) {
         renderBoard(id, 100);
-        console.log(dbCircle)
         for (let i = 0; i < 64; i++) {
-            renderCircle(id, dbCircle[i].posX, dbCircle[i].posY, dbCircle[i].isOn, dbCircle[i].color, 4);
-            console.log(i + " " + dbCircle[i].isOn + " "+ dbCircle[i].color + " " + dbCircle[i].posX)
+            renderCircle(id, dCircle[i].posX, dCircle[i].posY, dCircle[i].isOn, dCircle[i].color, 4);
         }
     }
 
@@ -174,11 +175,11 @@ jQuery(function ($) {
     $('#save-emoji').click(() => {
         if ($('#emoji-name-input').val() == "") alert("Cannot be empty!");
         else {
-          emojiName = $('#emoji-name-input').val();
-          getToday = today.getDate()+'-'+(today.getMonth()+1)+'-'+today.getFullYear();
-          sendToFirebase(emojiName, baseCircles, getToday);
-          $("#nameForm").modal('hide');
-          $("#emoji-save-result").append("Emoji has been saved!")
+            emojiName = $('#emoji-name-input').val();
+            getToday = today.getDate() + '-' + (today.getMonth() + 1) + '-' + today.getFullYear();
+            sendToFirebase(emojiName, baseCircles, getToday);
+            $("#nameForm").modal('hide');
+            $("#emoji-save-result").append("Emoji has been saved!")
         }
     })
 
@@ -187,13 +188,13 @@ jQuery(function ($) {
 
     // Reset function
     $("#reset-base-led").click(() => {
-        baseCircles = JSON.parse(JSON.stringify(circleTemplate));
+        baseCircles = R.clone(circleTemplate);
         for (let i = 0; i < 64; i++) {
             renderCircle("canvas-base", baseCircles[i].posX, baseCircles[i].posY, baseCircles[i].isOn, baseCircles[i].color);
         }
     })
 
-    
+
 
     // Console
 
